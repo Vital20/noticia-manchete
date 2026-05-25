@@ -1,0 +1,526 @@
+# PROMPT COMPLETO — GERADOR DO PROJETO
+
+Você é um engenheiro de software sênior especialista em:
+
+* Python
+* Streamlit
+* NLP
+* Web scraping
+* Análise de sentimento
+* UX/UI para dashboards
+* Organização de arquitetura de software
+* Projetos acadêmicos de comunicação e mídia
+
+Seu objetivo é criar um projeto COMPLETAMENTE FUNCIONAL chamado:
+
+# “Analisador de Manchetes e Enquadramento Midiático”
+
+O projeto será apresentado academicamente e deve parecer profissional, moderno e funcional.
+
+O sistema deve rodar LOCALMENTE usando Streamlit.
+
+IMPORTANTE:
+
+* Gere APENAS código funcional.
+* NÃO use placeholders vagos.
+* NÃO omita arquivos.
+* NÃO simplifique arquitetura.
+* NÃO gere pseudocódigo.
+* Todas as bibliotecas devem funcionar.
+* Todo o projeto deve ser organizado em múltiplos arquivos.
+* O código deve ser comentado.
+* O visual precisa ser moderno.
+* Todas as dependências devem ser compatíveis.
+* Evite funções depreciadas.
+* O projeto deve funcionar em português.
+* O sistema precisa ser estável para apresentação acadêmica.
+
+---
+
+# OBJETIVO DO PROJETO
+
+---
+
+O usuário pesquisará um tema.
+
+Exemplos:
+
+* Flamengo
+* Lula
+* Inteligência Artificial
+* Israel
+* Neymar
+* Petrobras
+
+O sistema irá:
+
+1. Coletar manchetes recentes de diferentes portais de notícias.
+2. Comparar as palavras utilizadas.
+3. Identificar o tom das manchetes.
+4. Exibir gráficos.
+5. Mostrar nuvem de palavras.
+6. Mostrar tabela comparativa.
+7. Mostrar linha do tempo das notícias.
+8. Permitir que uma IA resuma as manchetes.
+
+O foco principal é:
+
+# análise de tom midiático
+
+Classificação:
+
+* Positivo
+* Negativo
+* Neutro
+
+---
+
+# STACK OBRIGATÓRIA
+
+---
+
+Backend:
+
+* Python 3.11+
+
+Frontend:
+
+* Streamlit
+
+Manipulação de dados:
+
+* pandas
+
+Visualizações:
+
+* plotly
+* matplotlib
+
+NLP:
+
+* nltk
+* textblob
+* scikit-learn
+
+Nuvem de palavras:
+
+* wordcloud
+
+Web scraping:
+
+* requests
+* BeautifulSoup4
+
+IA resumidora:
+
+* Groq API
+
+Banco de dados:
+
+* SQLite
+
+---
+
+# MODELOS DE IA
+
+---
+
+O sistema deve usar:
+
+Modelo principal:
+
+* gpt-oss-120b
+
+Modelo fallback:
+
+* gpt-oss-20b
+
+Implementar fallback automático caso o principal falhe.
+
+A chave da API deve ser lida por variável de ambiente usando:
+
+.env
+
+NUNCA hardcodar a chave diretamente no código.
+
+Implementar:
+
+* tratamento de erro da API
+* timeout
+* fallback automático
+* mensagens amigáveis
+
+---
+
+# PORTAIS DE NOTÍCIAS
+
+---
+
+Coletar manchetes dos seguintes portais:
+
+* G1
+* CNN Brasil
+* UOL
+* Folha de S.Paulo
+* Estadão
+
+IMPORTANTE:
+
+O scraping deve:
+
+* respeitar headers de navegador
+* evitar bloqueios simples
+* usar timeout
+* tratar erros de conexão
+* ignorar links quebrados
+* evitar crash do sistema
+
+A coleta deve retornar:
+
+* portal
+* manchete
+* data
+* link
+* horário da coleta
+
+---
+
+# FUNCIONALIDADES OBRIGATÓRIAS
+
+---
+
+# 1. Campo de pesquisa
+
+O usuário digita um tema.
+
+Exemplo:
+
+"Flamengo"
+
+Ao clicar no botão:
+
+"Analisar Manchetes"
+
+O sistema inicia toda a coleta.
+
+---
+
+# 2. Coleta de manchetes
+
+---
+
+Buscar manchetes relacionadas ao tema.
+
+Se não houver resultados:
+
+* mostrar aviso amigável
+* não quebrar a aplicação
+
+---
+
+# 3. DataFrame
+
+---
+
+Exibir tabela interativa contendo:
+
+* Portal
+* Manchete
+* Tom
+* Data
+* Link
+
+A tabela deve:
+
+* permitir scroll
+* ser bonita
+* responsiva
+
+---
+
+# 4. Análise de sentimento
+
+---
+
+Implementar sistema simples de análise de sentimento.
+
+Classificação:
+
+* Positivo
+* Negativo
+* Neutro
+
+Usar português.
+
+Criar função robusta.
+
+O sistema deve:
+
+* limpar texto
+* remover caracteres especiais
+* normalizar palavras
+
+---
+
+# 5. Gráfico de sentimentos
+
+---
+
+Criar gráfico moderno usando Plotly.
+
+Mostrar:
+
+* quantidade positiva
+* quantidade negativa
+* quantidade neutra
+
+Visual moderno.
+
+---
+
+# 6. Nuvem de palavras
+
+---
+
+Gerar wordcloud com:
+
+* palavras mais utilizadas
+* remoção de stopwords
+* português
+
+A nuvem deve:
+
+* ficar centralizada
+* ter boa resolução
+* funcionar no Streamlit
+
+---
+
+# 7. Linha do tempo
+
+---
+
+Criar timeline mostrando:
+
+* horário/data das manchetes
+* frequência das publicações
+
+Usar Plotly.
+
+---
+
+# 8. Comparação entre portais
+
+---
+
+Mostrar:
+
+* quantidade de manchetes por portal
+* diferença de tom entre portais
+
+Criar gráfico comparativo.
+
+---
+
+# 9. IA resumidora
+
+---
+
+Adicionar área:
+
+"Resumo das manchetes pela IA"
+
+A IA deve:
+
+* ler as manchetes coletadas
+* gerar resumo curto
+* linguagem clara
+* português natural
+* no máximo 2 parágrafos
+
+Implementar:
+
+* loading spinner
+* tratamento de erro
+* fallback de modelo
+
+---
+
+# 10. Interface visual
+
+---
+
+O visual deve parecer um dashboard jornalístico moderno.
+
+Usar:
+
+* layout wide
+* métricas no topo
+* cards
+* cores elegantes
+* dark mode amigável
+* sidebar organizada
+
+Adicionar:
+
+* título grande
+* subtítulo acadêmico
+* ícones
+* divisões visuais
+
+O design deve parecer profissional.
+
+---
+
+# ESTRUTURA DE PASTAS OBRIGATÓRIA
+
+---
+
+Gerar exatamente esta estrutura:
+
+projeto/
+│
+├── app.py
+├── scraper.py
+├── sentiment.py
+├── ia_resumo.py
+├── visualizacoes.py
+├── banco.py
+├── utils.py
+├── requirements.txt
+├── README.md
+├── .env.example
+├── noticias.db
+│
+├── assets/
+│   └── logo.png
+│
+└── dados/
+
+---
+
+# REQUIREMENTS.TXT
+
+---
+
+Gerar requirements.txt completo.
+
+Todas as dependências devem ser compatíveis.
+
+---
+
+# README
+
+---
+
+Gerar README profissional contendo:
+
+* descrição do projeto
+* instalação
+* criação do ambiente virtual
+* configuração do .env
+* execução
+* funcionalidades
+* tecnologias
+
+---
+
+# SEGURANÇA E ESTABILIDADE
+
+---
+
+Implementar:
+
+* try/except em scraping
+* timeout em requests
+* validação de respostas
+* fallback de IA
+* prevenção de crash
+* logs simples
+* mensagens amigáveis
+
+O sistema NÃO pode quebrar facilmente.
+
+---
+
+# STREAMLIT
+
+---
+
+Usar:
+
+st.set_page_config(
+page_title="Analisador de Manchetes",
+layout="wide"
+)
+
+Adicionar:
+
+* spinner
+* sidebar
+* métricas
+* expanders
+* gráficos interativos
+
+---
+
+# ORGANIZAÇÃO DO CÓDIGO
+
+---
+
+Separar lógica corretamente.
+
+NÃO colocar tudo em um único arquivo.
+
+Cada módulo deve ter responsabilidade específica.
+
+---
+
+# IMPORTANTE
+
+---
+
+O projeto precisa:
+
+* rodar localmente
+* ser bonito visualmente
+* parecer profissional
+* funcionar para apresentação acadêmica
+* ter código limpo
+* ter arquitetura organizada
+* evitar bugs comuns
+* ser fácil de entender
+
+---
+
+# ENTREGA ESPERADA
+
+---
+
+Quero que você gere:
+
+1. Todos os arquivos completos.
+2. Código completo de cada arquivo.
+3. Explicação curta do funcionamento.
+4. Passo a passo para executar.
+5. Dependências.
+6. Estrutura final.
+7. Sem omitir nada.
+
+NÃO RESUMA.
+
+Gere o projeto completo e funcional.
+
+---
+
+# OBSERVAÇÃO MUITO IMPORTANTE
+
+---
+
+Se algum portal bloquear scraping:
+
+* implemente fallback
+* continue o funcionamento com os demais
+* nunca derrube o sistema inteiro
+
+A prioridade é estabilidade para apresentação acadêmica.

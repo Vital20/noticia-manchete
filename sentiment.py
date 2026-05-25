@@ -1,0 +1,467 @@
+from utils import limpar_texto, logger
+import re
+
+_POSITIVAS = {
+    "sucesso", "vitoria", "vitorioso", "vitoriosa", "triunfo",
+    "conquista", "conquistas", "conquistou", "conquistar",
+    "realizacao", "realizacoes", "realizar", "realizado",
+    "atingiu", "atingir", "alcancou", "alcancar", "alcance",
+    "concluiu", "concluir", "concluido", "entregue", "entregou",
+    "implementado", "implementacao", "implantado", "implantacao",
+    "lancado", "lancamento", "inaugurado", "inauguracao",
+    "premiado", "premiada", "premiados", "premiadas", "premiacao",
+    "homenageado", "homenageada", "homenagem", "homenagens",
+    "reconhecido", "reconhecida", "reconhecimento",
+    "destaque", "destacou", "destacar", "campeao", "campea",
+    "campeoes", "vencedor", "vencedora", "venceu", "vence",
+    "superou", "superar", "superado", "supera",
+    "expandindo", "expansao", "expansiva",
+    "prosperidade", "prospero", "prospera", "florescente",
+    "florescendo", "fortaleceu", "fortalecer", "fortalecimento",
+    "fortalece", "multiplicou", "multiplicar", "alavancou",
+    "superavit", "excedente", "rentavel", "rentabilidade",
+    "lucro", "lucros", "lucrativo", "lucrativa", "lucrou",
+    "ganho", "ganhos", "bonificacao", "dividendos",
+    "melhora", "melhor", "melhorou", "melhorando", "melhorias",
+    "melhorar", "avanco", "avancos", "avancou", "avancar", "avanca",
+    "progresso", "progressivo", "progressos",
+    "evolucao", "evoluiu", "evoluir", "evolui",
+    "aprimoramento", "aprimorar", "aprimorou",
+    "aperfeicoamento", "aperfeicoar", "aperfeicoou",
+    "modernizacao", "modernizar", "modernizou",
+    "otimizacao", "otimizar", "otimizou", "incremento",
+    "excelente", "excelencia", "otimo", "otima", "otimos", "otimas",
+    "maravilhoso", "maravilhosa", "extraordinario", "extraordinaria",
+    "formidavel", "admirável", "notavel", "brilhante",
+    "fantastico", "fantastica", "espetacular", "magnifico",
+    "sensacional", "incrivel", "impressionante",
+    "surpreendente", "fenomenal", "excepcional",
+    "satisfatorio", "satisfatoria", "satisfez", "satisfacao",
+    "digno", "digna", "louvavel", "honroso", "honrosa",
+    "eficiente", "eficiencia", "eficaz", "eficazes",
+    "produtivo", "produtiva", "produtividade",
+    "competente", "competencia", "competencias",
+    "confiavel", "confianca", "solido", "solida", "solidas",
+    "robusto", "robusta", "qualidade", "qualidades",
+    "altissimo", "altissima", "altos",
+    "inovacao", "inovacoes", "inovador", "inovadora",
+    "pioneiro", "pioneira", "vanguardista", "vanguarda",
+    "transformacao", "transformador", "transformadora",
+    "revolucionario", "revolucionou",
+    "digital", "tecnologia", "tecnologico", "tecnologica",
+    "positivo", "positiva", "positivos", "positivas",
+    "otimismo", "otimista", "otimistas",
+    "esperanca", "esperancoso", "esperancosa",
+    "promissor", "promissora", "promissores",
+    "alentador", "alentadora", "encorajador", "encorajadora",
+    "animador", "animadora", "favoravel", "favoraveis",
+    "benefico", "benefica", "beneficios", "beneficio",
+    "frutifero", "vantajoso", "vantajosa", "vantagem", "vantagens",
+    "oportunidade", "oportunidades", "potencial", "potenciais",
+    "ajuda", "ajudar", "ajudou", "apoio", "apoiar", "apoiou",
+    "parceria", "parcerias", "cooperacao", "colaboracao",
+    "solidariedade", "uniao", "paz", "dialogo", "entendimento",
+    "acordo", "acordos", "conciliacao", "harmonia", "harmonioso",
+    "harmoniosa", "tratativa", "tratativas", "negociacao",
+    "negociacoes", "pacto", "alianca", "coalizao",
+    "alegria", "feliz", "felicidade", "orgulho", "orgulhoso",
+    "orgulhosa", "gratidao", "gratificado", "gratificante",
+    "contentamento", "entusiasmo", "empolgado", "empolgada",
+    "animado", "animada", "motivado", "motivada",
+    "inspirador", "inspiradora", "inspiracao",
+    "seguranca", "seguro", "segura", "estavel", "estaveis",
+    "estabilidade", "tranquilidade", "pacifico", "pacifica",
+    "protecao", "protegido", "protegida", "garantia", "garantias",
+    "garantido", "garantida", "transparencia", "transparente",
+    "saude", "saudavel", "bem-estar", "vacinacao", "vacinado",
+    "vacinada", "curado", "curada", "cura", "recuperacao",
+    "recuperado", "recuperada", "recupera", "recuperou",
+    "tratamento", "tratamentos",
+    "descoberta", "descobertas", "pesquisa", "pesquisas",
+    "cientistas", "desenvolvimento", "desenvolver", "desenvolveu",
+    "solucao", "solucoes", "resolver", "resolvido", "resolvida",
+    "comemorar", "comemora", "comemorou", "comemoracao",
+    "celebrar", "celebra", "celebrou", "festejar", "festeja",
+    "inaugurar", "inaugura", "lancar", "lanca", "investir",
+    "investe", "investiu", "investimento", "investimentos",
+    "contratar", "contrata", "contratou", "contratacao",
+    "empregar", "emprega", "empregou",
+    "promover", "promove", "promoveu", "promocao",
+    "criar", "cria", "criou", "criacao", "gerar", "gera",
+    "gerou", "geracao", "acima", "expansivo", "expansiva",
+    "anima", "animar", "animou", "investidores",
+    "vendas", "natal", "ferias", "turismo",
+    "cumprir", "cumpriu", "cumprira", "cumprimento",
+    "descobrem", "descobriu", "descobrir", "descoberto",
+    "atinge", "atingiu", "atingir", "maxima", "maximo",
+    "bateu", "bater", "exportacao", "exportacoes",
+}
+
+_NEGATIVAS = {
+    "morte", "mortes", "morto", "mortos", "morta", "morrer",
+    "morreu", "morrendo", "matar", "matou", "mata",
+    "assassinato", "assassinatos", "assassinar", "assassinado",
+    "assassinada", "homicidio", "homicidios", "homicida",
+    "latrocinio", "genocidio", "tragedia", "tragedias",
+    "tragico", "tragica", "catastrofe", "catastrofico",
+    "catastrofica", "desastre", "desastres", "desastroso",
+    "desastrosa", "devastador", "devastadora", "devastacao",
+    "arrasador", "arrasou", "destruicao", "destruir", "destruiu",
+    "destrutivo", "calamidade", "calamitoso",
+    "violencia", "violentas", "violento", "violenta",
+    "agressao", "agressivo", "agredir", "agredido",
+    "atentado", "atentados", "ataque", "ataques", "atacar",
+    "atacou", "ameaca", "ameacas", "ameacador", "ameacadora",
+    "ameacar", "ameacou", "perigo", "perigos", "perigoso",
+    "perigosa", "sequestro", "sequestrado", "sequestrada",
+    "terrorismo", "terrorista", "terroristas",
+    "bala", "balas", "tiro", "tiros", "tiroteio", "tiroteios",
+    "facada", "facadas", "esfaqueado", "esfaqueada",
+    "ferido", "feridos", "ferida", "ferimento", "ferimentos",
+    "socorro", "crime", "crimes", "criminoso", "criminosos",
+    "criminalidade", "criminoso",
+    "ilegal", "ilegais", "ilegalidade",
+    "fraude", "fraudes", "fraudulento", "fraudulenta",
+    "corrupcao", "corrupto", "corruptos", "corrupta",
+    "propina", "propinas", "desvio", "desvios", "desviou",
+    "lavagem", "sonegação", "sonegacao", "sonegou",
+    "superfaturamento", "cartel", "conluio",
+    "improbidade", "nepotismo", "caixa-dois",
+    "prisao", "prisoes", "prender", "prendeu", "preso", "presos",
+    "presa", "capturado", "capturada", "detido", "detida",
+    "detencao", "reclusao", "encarceramento", "cadeia",
+    "penitenciaria", "condenacao", "condenado", "condenada",
+    "condenados", "sentenca", "julgado", "julgada",
+    "problema", "problemas", "dificuldade", "dificuldades",
+    "dificil", "dificeis", "complicado", "complicada",
+    "complicacao", "complexo", "complexa",
+    "tenso", "tensa", "tensao", "grave", "graves", "gravidade",
+    "critico", "critica", "criticas", "preocupante", "preocupantes",
+    "preocupacao", "alarmante", "alarmantes",
+    "drastico", "drastica", "drasticamente",
+    "crise", "crises", "recessao", "estagnacao",
+    "inflacao", "reajuste", "carestia", "escassez",
+    "endividamento", "divida", "dividas", "inadimplencia",
+    "calote", "default", "falencia", "falir", "faliu",
+    "bancarrota", "colapso", "quebrou", "quebra",
+    "prejuizo", "prejuizos", "perda", "perdas", "rombo", "rombos",
+    "deficit", "deficits", "crise",
+    "pior", "piora", "piorou",
+    "piorando",
+    "suspensao", "suspender", "suspendeu",
+    "cancelamento", "cancelar", "cancelou",
+    "bloqueio", "bloquear", "bloqueou",
+    "paralisacao", "paralisar", "paralisou",
+    "parado", "parada", "estagnado", "estagnada",
+    "desemprego", "desempregado", "desempregados",
+    "miseravel", "miseraveis", "miseria",
+    "pobreza", "fome", "desnutricao",
+    "doenca", "doencas", "doente", "doentes",
+    "epidemia", "pandemias", "pandemia", "virus",
+    "contaminacao", "contaminado", "contaminada",
+    "guerra", "guerras", "conflito", "conflitos",
+    "combate", "batalha", "batalhas", "confronto", "confrontos",
+    "embate", "embates", "disputa", "disputas",
+    "briga", "brigas", "rixa", "desavença", "desavenças",
+    "divergencia", "divergencias", "discordia",
+    "hostilidade", "hostil", "hostis",
+    "belico", "belica", "tumulto", "tumultos", "confusao",
+    "depredacao", "vandalismo", "saque", "saques",
+    "investigacao", "investigacoes", "investigar", "investigado",
+    "investigada", "suspeito", "suspeita", "suspeitas",
+    "denuncia", "denuncias", "denunciar", "denunciado",
+    "denunciada", "acusacao", "acusacoes", "acusar", "acusado",
+    "acusada", "revelacao", "revelacoes", "revela", "revelou",
+    "escandalo", "escandalos", "escandaloso",
+    "polêmica", "polemica", "polemico", "controversia",
+    "controverso", "controversa", "dubio", "dubia",
+    "questionado", "questionada", "questionavel",
+    "multa", "multas", "multado", "multada",
+    "sanção", "sanções", "sancao", "sancoes", "sancionado",
+    "processo", "processos", "processado", "processada",
+    "intimacao", "intimado", "intimada",
+    "notificacao", "notificado", "notificada",
+    "embargo", "embargos", "embargado",
+    "interdicao", "interditado", "interditada",
+    "confisco", "confiscado",
+    "pessimo", "pessima", "pessimos", "pessimas",
+    "ruim", "ruins", "terrivel", "terriveis",
+    "horrivel", "horroroso", "horror",
+    "medo", "medos", "temor", "temer", "receio", "apreensao",
+    "negativo", "negativa", "negativos",
+    "fracasso", "fracassar", "fracassou",
+    "derrota", "derrotas", "derrotado",
+    "falhou", "falhar", "falha", "falhas", "fracassou",
+    "deficiente", "deficiencia", "deficiencias",
+    "insuficiente", "inadequado", "inadequada",
+    "incompetente", "incompetencia",
+    "ineficaz", "ineficientes", "ineficiente",
+    "ineficiencia", "instabilidade", "inseguranca",
+    "inseguro", "insegura", "incerteza", "incertezas",
+    "vulneravel", "vulnerabilidade",
+    "precario", "precaria", "precarios", "precarias",
+    "abandono", "abandonado", "abandonada",
+    "negligenciar", "negligencia", "negligente",
+    "omissao", "omitir", "omisso", "omissa",
+    "censura", "censurar", "censurado",
+    "autoritario", "autoritaria", "ditadura", "ditatorial",
+    "golpe", "golpista", "golpistas",
+    "manipulacao", "manipular", "manipulado",
+    "desinformacao", "boato", "boatos", "falso", "falsa",
+    "falsos", "falsas", "enganoso", "enganosa", "engano",
+    "mentira", "mentiras", "mentiroso", "farsa",
+    "intolerancia", "preconceito", "discriminacao",
+    "racismo", "racista", "racistas",
+    "xenofobia", "machismo", "misoginia", "homofobia",
+    "exploracao", "explorador", "opressao", "opressor",
+    "abusivo", "abusiva", "abuso", "abusos", "abusou",
+    "injustica", "injusto", "injusta",
+    "arbitrario", "arbitraria", "arbitrariedade",
+    "impunidade", "violacao", "violacoes", "violador",
+    "imoral", "imoralidade", "antietico", "antietica",
+    "danoso", "danosa", "prejudicial", "prejudiciais",
+    "nocivo", "nociva", "tóxico", "toxica", "toxicos",
+    "caotico", "caotica", "anarquia", "anarquico",
+    "conturbado", "turbulento", "convulsionado",
+    "especulativo", "especulacao", "predatorio", "predatoria",
+    "terror", "arrastao", "arrastoes",
+    "vitima", "vitimas",
+    "alvo", "prejudica", "prejudicam", "prejudicou", "prejudicar",
+    "perdeu", "perder", "perde", "perdendo",
+    "admite", "admitiu", "admitir", "admitindo",
+    "preocupa", "preocupar", "preocupou", "preocupam",
+    "alerta", "alertar", "alertou", "alertas",
+    "critica", "criticar", "criticou", "criticam",
+    "condena", "condenar", "condenou",
+    "repudia", "repudiar", "repudiou",
+    "rejeita", "rejeitar", "rejeitou",
+    "recusa", "recusar", "recusou",
+    "proibe", "proibir", "proibiu", "proibido",
+    "impede", "impedir", "impediu", "impedido",
+    "obstrui", "obstruir", "obstruiu",
+    "boicote", "boicotar", "boicotou",
+    "protesta", "protestar", "protestou",
+    "manifestacao", "manifestacoes", "manifestantes",
+    "greve", "greves", "paralisacao",
+    "demissao", "demissoes", "demitido", "demitida",
+    "exonerado", "exonerada", "afastado", "afastada",
+    "cassado", "cassada",
+    "sequestrou", "sequestrar",
+    "extorsao", "chacina", "chacinas", "massacre",
+    "conspiracao", "golpismo",
+}
+
+_AMBIGUAS_ASC = {"aumento", "aumenta", "aumentou", "aumentar",
+                 "crescimento", "cresceu", "cresce", "crescente",
+                 "recorde", "recordes", "alta", "altas",
+                 "dispara", "disparou", "disparar", "dispare"}
+
+_AMBIGUAS_DESC = {"queda", "cair", "caiu", "caindo", "cai",
+                  "reducao", "reducoes", "reduz", "reduziu", "reduzir",
+                  "corte", "cortes", "cortar", "cortou"}
+
+_AMBIGUAS_NEUTRO = {"reforma", "reformas", "mudanca", "mudancas",
+                    "mudar", "mudou", "alteracao", "alteracoes",
+                    "alterar", "alterou"}
+
+_CONTEXTOS_INVERSAO = {"juros", "taxa", "taxas", "imposto", "impostos",
+                       "inflacao", "desemprego", "criminalidade",
+                       "violencia", "morte", "mortes", "homicidio",
+                       "homicidios", "assassinato", "assassinatos",
+                       "tragedia", "tragedias", "corrupcao", "corruptos",
+                       "gastos", "gasto", "burocracia"}
+
+_INTENSIFICADORES = {
+    "muito", "mais", "maior", "maiores", "grande", "grandes",
+    "extremamente", "altamente", "intensamente",
+    "fortemente", "profundamente", "totalmente",
+    "completamente", "absolutamente", "drasticamente",
+    "significativamente", "consideravelmente",
+    "substancialmente", "visivelmente", "claramente",
+    "incrivelmente", "surpreendentemente", "absurdamente",
+    "grave", "gravemente", "serio", "seriamente",
+    "urgente", "urgentemente", "altissimo", "altissima",
+}
+
+_NEGACAO = {
+    "nao", "nunca", "jamais", "nem", "ninguem",
+    "nenhum", "nenhuma", "nenhuns", "nenhumas",
+    "tampouco", "senao",
+    "nada",
+}
+
+_NEGACAO_FRACA = {
+    "sem", "exceto",
+}
+
+_NEGACAO_COMPOSTA = re.compile(
+    r"(longe\s+de\s+ser|deixou\s+a\s+desejar|ao\s+contrario|"
+    r"em\s+vez\s+de|falta\s+de|ausencia\s+de|apesar\s+de|"
+    r"em\s+meio\s+a|contrario\s+do\s+que)", re.I
+)
+
+_PADROES_NEGATIVOS = re.compile(
+    r"\b(?:e|foi|sao|foram|era|eram)\s+"
+    r"(?:investigado|investigada|condenado|condenada|preso|presa|"
+    r"denunciado|denunciada|multado|multada|demitido|demitida|"
+    r"processado|processada|intimado|intimada|notificado|notificada|"
+    r"embargado|embargada|interditado|interditada|confiscado|confiscada|"
+    r"expulso|expulsa|suspenso|suspensa|bloqueado|bloqueada|"
+    r"cancelado|cancelada|acusado|acusada|indicado|indicada|"
+    r"afastado|afastada|exonerado|exonerada|cassado|cassada|"
+    r"extraditado|extraditada|despejado|despejada)\b", re.I
+)
+
+_PADROES_POSITIVOS = re.compile(
+    r"\b(?:e|foi|sao|foram|era|eram)\s+"
+    r"(?:premiado|premiada|homenageado|homenageada|reconhecido|reconhecida|"
+    r"condecorado|condecorada|laureado|laureada|agraciado|agraciada|"
+    r"contemplado|contemplada|selecionado|selecionada|aprovado|aprovada|"
+    r"autorizado|autorizada|liberado|liberada|classificado|classificada|"
+    r"habilitado|habilitada|eleito|eleita|nomeado|nomeada|"
+    r"empossado|empossada)\b", re.I
+)
+
+_PADROES_NEG_FRASE = re.compile(
+    r"\b(alerta\s+para|preocupa|critica|teme|receia|repudia|"
+    r"condena|rejeita|proibe|impede|boicota|protesta|"
+    r"lamenta|lamentou|repudia|combate|combater)\b", re.I
+)
+
+_PADROES_POS_FRASE = re.compile(
+    r"\b(comemora|celebra|festeja|inaugura|lanca|conquista|"
+    r"vence|venceu|aprovou|investe|investiu|contrata|"
+    r"contratou|amplia|ampliou|expande)\b", re.I
+)
+
+_PALAVRAS_FORTES = {
+    "morte": 2, "mortes": 2, "morto": 2, "mortos": 2, "morrer": 2,
+    "matar": 2, "assassinato": 2, "assassinado": 2, "assassinada": 2,
+    "tragedia": 2, "tragedias": 2, "tragico": 2, "catastrofe": 2, "desastre": 2,
+    "devastador": 2, "destruicao": 2, "destruir": 2, "genocidio": 2,
+    "terrorismo": 2, "terrorista": 2, "sequestro": 2,
+    "corrupcao": 2, "corrupto": 2, "propina": 2,
+    "prisao": 2, "condenacao": 2, "condenado": 2, "condenada": 2,
+    "fraude": 2, "falencia": 2, "bancarrota": 2,
+    "guerra": 2, "massacre": 2, "chacina": 2, "rombo": 2,
+    "sucesso": 2, "vitoria": 2, "vitorioso": 2, "triunfo": 2,
+    "excelente": 2, "extraordinario": 2, "espetacular": 2,
+    "premiado": 2, "premiada": 2, "homenageado": 2, "reconhecido": 2,
+    "superou": 2, "conquista": 2, "conquistas": 2,
+    "maravilhoso": 2, "fenomenal": 2, "brilhante": 2,
+    "campeao": 2, "campea": 2, "vencedor": 2, "vencedora": 2,
+    "superavit": 2, "perdeu": 2, "alvo": 2,
+}
+
+
+def _peso_palavra(palavra):
+    return _PALAVRAS_FORTES.get(palavra, 1)
+
+
+def _pontuar_texto(tokens, palavras_set, peso_base=1):
+    score = 0
+    for i, token in enumerate(tokens):
+        if token in palavras_set:
+            peso = _peso_palavra(token)
+            if i > 0 and tokens[i - 1] in _INTENSIFICADORES:
+                peso = int(peso * 1.5)
+            if i < len(tokens) - 1 and tokens[i + 1] in _INTENSIFICADORES:
+                peso = int(peso * 1.5)
+            score += peso * peso_base
+    return score
+
+
+def _processar_ambiguas(tokens):
+    score = 0
+    for i, token in enumerate(tokens):
+        if token in _AMBIGUAS_ASC:
+            peso = _PALAVRAS_FORTES.get(token, 1)
+            vizinhos = tokens[max(0, i - 2):i] + tokens[i + 1:min(len(tokens), i + 5)]
+            tem_neg = any(v in _NEGATIVAS for v in vizinhos)
+            if tem_neg:
+                score -= 2 * peso
+            else:
+                score += peso
+        elif token in _AMBIGUAS_DESC:
+            vizinhos = tokens[max(0, i - 2):i] + tokens[i + 1:min(len(tokens), i + 5)]
+            tem_inversao = any(v in _CONTEXTOS_INVERSAO for v in vizinhos)
+            if tem_inversao:
+                score += 3
+            else:
+                score -= 2
+        elif token in _AMBIGUAS_NEUTRO:
+            vizinhos = tokens[max(0, i - 2):i] + tokens[i + 1:min(len(tokens), i + 4)]
+            tem_neg = any(v in _NEGATIVAS for v in vizinhos)
+            tem_pos = any(v in _POSITIVAS for v in vizinhos)
+            if tem_neg and not tem_pos:
+                score -= 1
+            elif tem_pos and not tem_neg:
+                score += 1
+    return score
+
+
+def _processar_negacao(tokens):
+    score = 0
+    for i, token in enumerate(tokens):
+        if token in _NEGACAO:
+            peso_neg = 3
+        elif token in _NEGACAO_FRACA:
+            peso_neg = 2
+        else:
+            continue
+        for j in range(i + 1, min(i + 4, len(tokens))):
+            if tokens[j] in _POSITIVAS:
+                score -= peso_neg
+            elif tokens[j] in _NEGATIVAS:
+                score += peso_neg
+            elif tokens[j] in _AMBIGUAS_ASC:
+                score -= peso_neg
+            elif tokens[j] in _AMBIGUAS_DESC:
+                score += peso_neg
+    return score
+
+
+def _processar_padroes(texto):
+    score = 0
+    if _PADROES_NEGATIVOS.search(texto):
+        score -= 2
+    if _PADROES_POSITIVOS.search(texto):
+        score += 2
+    if _PADROES_NEG_FRASE.search(texto):
+        score -= 2
+    if _PADROES_POS_FRASE.search(texto):
+        score += 2
+    return score
+
+
+def analisar_sentimento(manchete):
+    if not manchete or not isinstance(manchete, str):
+        return "Neutro"
+
+    texto = manchete.strip()
+    texto_limpo = limpar_texto(texto)
+    tokens = texto_limpo.split()
+
+    if not tokens:
+        return "Neutro"
+
+    score = 0
+
+    score += _pontuar_texto(tokens, _POSITIVAS, peso_base=1)
+    score -= _pontuar_texto(tokens, _NEGATIVAS, peso_base=1)
+
+    score += _processar_ambiguas(tokens)
+
+    score += _processar_negacao(tokens)
+
+    score += _processar_padroes(texto)
+
+    if _NEGACAO_COMPOSTA.search(texto):
+        score -= 3
+
+    if score >= 2:
+        return "Positivo"
+    elif score <= -2:
+        return "Negativo"
+    else:
+        return "Neutro"
