@@ -1,4 +1,4 @@
-from utils import limpar_texto, logger
+from utils import limpar_texto
 import re
 
 _POSITIVAS = {

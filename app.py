@@ -1,8 +1,5 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-from pathlib import Path
-import re
 
 from scraper import coletar_manchetes
 from sentiment import analisar_sentimento
@@ -71,7 +68,11 @@ st.markdown(
         gap: 1rem; margin: 1.5rem 0;
     }}
     .metric-card {{
-        composes: glass; padding: 1.25rem 1rem; text-align: center;
+        background: {CORES["card"]}; backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid {CORES["borda"]};
+        border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        padding: 1.25rem 1rem; text-align: center;
         transition: transform 0.2s, box-shadow 0.2s;
     }}
     .metric-card:hover {{ transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.35); }}
@@ -80,7 +81,11 @@ st.markdown(
     .metric-sub {{ font-size: 0.72rem; color: {CORES["texto_muted"]}; margin-top: 0.2rem; }}
 
     .news-card {{
-        composes: glass; padding: 1rem 1.25rem; margin-bottom: 0.75rem;
+        background: {CORES["card"]}; backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid {CORES["borda"]};
+        border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        padding: 1rem 1.25rem; margin-bottom: 0.75rem;
         border-left: 4px solid {CORES["texto_muted"]};
         transition: transform 0.15s, box-shadow 0.15s;
         display: flex; align-items: flex-start; gap: 1rem;
@@ -118,7 +123,11 @@ st.markdown(
     .welcome-portais {{ font-size: 0.75rem; color: {CORES["texto_muted"]}; opacity: 0.5; }}
 
     .info-box {{
-        composes: glass; padding: 1.25rem;
+        background: {CORES["card"]}; backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid {CORES["borda"]};
+        border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        padding: 1.25rem;
         border-left: 4px solid {CORES["accent"]};
         color: {CORES["texto"]}; line-height: 1.6; margin: 0.5rem 0;
     }}
@@ -196,8 +205,10 @@ for key in ["analise_feita", "df_resultado", "manchetes_raw", "tema_atual"]:
     if key not in st.session_state:
         st.session_state[key] = False if key == "analise_feita" else (pd.DataFrame() if "df" in key else [] if "raw" in key else "")
 
-if "comp_resultado" not in st.session_state:
-    st.session_state.comp_resultado = False
+for key in ["comp_resultado", "resumo_texto", "resumo_comp_texto"]:
+    if key not in st.session_state:
+        st.session_state[key] = False if "resultado" in key else ""
+
 if "comp_dados" not in st.session_state:
     st.session_state.comp_dados = {}
 
@@ -247,8 +258,8 @@ with st.sidebar:
             )
             for t in ts:
                 st.markdown(f'<div class="sidebar-tema">→ {t}</div>', unsafe_allow_html=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Erro ao carregar ultimos temas: {e}")
 
 # ── SEARCH TRIGGER (aba 1) ──
 if analisar_btn and tema_input.strip():
@@ -379,7 +390,10 @@ with tab1:
         st.markdown(f'<div class="section-title"><span>🤖</span> Resumo das Manchetes</div>', unsafe_allow_html=True)
         if st.button("✨ Gerar Resumo", type="primary", key="resumo_tab1"):
             with st.spinner("Analisando manchetes..."):
-                st.markdown(f'<div class="info-box">{gerar_resumo(manchetes)}</div>', unsafe_allow_html=True)
+                st.session_state.resumo_texto = gerar_resumo(manchetes)
+            st.rerun()
+        if st.session_state.get("resumo_texto"):
+            st.markdown(f'<div class="info-box">{st.session_state.resumo_texto}</div>', unsafe_allow_html=True)
     else:
         st.markdown(
             f'<div class="welcome">'
@@ -461,7 +475,7 @@ with tab2:
             st.warning("Nenhum resultado para ambos os temas.")
         else:
             # — metrics —
-            def _metricas(df, nome, cor):
+            def _metricas(df):
                 t = len(df)
                 p = len(df[df["Tom"] == "Positivo"]) if "Tom" in df.columns else 0
                 n = len(df[df["Tom"] == "Negativo"]) if "Tom" in df.columns else 0
@@ -473,7 +487,7 @@ with tab2:
                 unsafe_allow_html=True,
             )
             for df_x, nome_x, cor_x in [(df_a, nome_a, CORES["accent"]), (df_b, nome_b, CORES["tema_b"])]:
-                t, p, n, neu = _metricas(df_x, nome_x, cor_x)
+                t, p, n, neu = _metricas(df_x)
                 st.markdown(
                     f'<div class="glass" style="padding:1rem;">'
                     f'<div style="font-size:1rem;font-weight:700;color:{cor_x};margin-bottom:0.75rem;'
@@ -561,8 +575,6 @@ with tab2:
                     fig_wc_b = nuvem_palavras(df_b)
                     if fig_wc_b:
                         st.pyplot(fig_wc_b)
-            if fig_tl: st.plotly_chart(fig_tl, use_container_width=True)
-
             # — summary —
             st.markdown(f'<div class="section-title"><span>🤖</span> Resumo Comparativo</div>', unsafe_allow_html=True)
             stub_a = []
@@ -573,16 +585,21 @@ with tab2:
                 stub_b.append({"portal": r["Portal"], "manchete": r["Manchete"], "tom": r["Tom"]})
 
             if stub_a or stub_b:
-                resumo = gerar_resumo(stub_a + stub_b)
-                extra = ""
-                ta, pa, na, neua = _metricas(df_a, nome_a, CORES["accent"])
-                tb, pb, nb, neub = _metricas(df_b, nome_b, CORES["tema_b"])
-                extra = (
-                    f"\n\n**Resumo da comparação:** O tema **{nome_a}** gerou {ta} manchetes "
-                    f"({pa} positivas, {na} negativas), enquanto **{nome_b}** gerou {tb} "
-                    f"({pb} positivas, {nb} negativas)."
-                )
-                st.markdown(f'<div class="info-box">{resumo}{extra}</div>', unsafe_allow_html=True)
+                if st.button("✨ Gerar Resumo Comparativo", type="primary", key="resumo_tab2"):
+                    with st.spinner("Analisando..."):
+                        resumo = gerar_resumo(stub_a + stub_b)
+                        ta, pa, na, neua = _metricas(df_a)
+                        tb, pb, nb, neub = _metricas(df_b)
+                        extra = (
+                            f"\n\n**Resumo da comparação:** O tema **{nome_a}** gerou {ta} manchetes "
+                            f"({pa} positivas, {na} negativas), enquanto **{nome_b}** gerou {tb} "
+                            f"({pb} positivas, {nb} negativas)."
+                        )
+                        ta, pa, na, neua = _metricas(df_a)
+                        tb, pb, nb, neub = _metricas(df_b)
+                    st.rerun()
+                if st.session_state.get("resumo_comp_texto"):
+                    st.markdown(f'<div class="info-box">{st.session_state.resumo_comp_texto}</div>', unsafe_allow_html=True)
 
 # ============================================================
 # TAB 3 — COMPARAR PORTAIS
@@ -708,7 +725,8 @@ with tab4:
 
     try:
         hist = carregar_historico()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Erro ao carregar historico: {e}")
         hist = pd.DataFrame()
 
     if hist.empty:

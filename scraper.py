@@ -1,3 +1,4 @@
+import re
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -60,9 +61,9 @@ def _buscar_rss_google(tema):
             data_str = ""
             if pubDate_tag:
                 try:
-                    pub_parsed = datetime.strptime(
-                        pubDate_tag.get_text(strip=True), "%a, %d %b %Y %H:%M:%S %Z"
-                    )
+                    raw = pubDate_tag.get_text(strip=True)
+                    raw_sem_tz = re.sub(r'\s+[A-Z]{2,5}$', '', raw)
+                    pub_parsed = datetime.strptime(raw_sem_tz, "%a, %d %b %Y %H:%M:%S")
                     data_str = pub_parsed.strftime("%d/%m/%Y")
                 except Exception:
                     data_str = datetime.now().strftime("%d/%m/%Y")

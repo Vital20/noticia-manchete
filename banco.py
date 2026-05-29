@@ -1,9 +1,10 @@
 import sqlite3
+from pathlib import Path
 import pandas as pd
 from datetime import datetime
 from utils import log
 
-DB_PATH = "noticias.db"
+DB_PATH = str(Path(__file__).parent / "noticias.db")
 
 
 def _conectar():
@@ -41,12 +42,12 @@ def criar_tabelas():
     conn.close()
 
 
-def _val(row, *keys):
+def _val(row, *keys, default=""):
     for k in keys:
         v = row.get(k)
         if v is not None and not (isinstance(v, float) and pd.isna(v)):
             return v
-    return ""
+    return default
 
 
 def salvar_analise(tema, df):
@@ -84,7 +85,7 @@ def salvar_analise(tema, df):
             analise_id,
             _val(row, portal_col, "portal"),
             _val(row, manchete_col, "manchete"),
-            _val(row, tom_col, "tom", "Neutro"),
+            _val(row, tom_col, "tom", default="Neutro"),
             _val(row, data_col, "data"),
             _val(row, link_col, "link"),
             _val(row, coleta_col, "horario_coleta"),
@@ -136,3 +137,7 @@ def ultimos_temas(limite=5):
     temas = [row[0] for row in cursor.fetchall()]
     conn.close()
     return temas
+
+
+# Garantir que as tabelas existam ao importar o modulo
+criar_tabelas()

@@ -353,9 +353,6 @@ def timeline_por_portal(df):
 
 
 def tabela_palavras_por_portal(df, top_n=5):
-    from utils import extrair_palavras
-    from collections import Counter
-
     if df.empty:
         return None
 
