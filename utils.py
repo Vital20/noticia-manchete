@@ -1,4 +1,5 @@
 import re
+import unicodedata
 import logging
 from datetime import datetime
 
@@ -69,7 +70,9 @@ def limpar_texto(texto):
     if not isinstance(texto, str):
         return ""
     texto = texto.lower()
-    texto = re.sub(r"[^a-záéíóúâêîôûãõçàèìòùäëïöüñ0-9\s]", " ", texto)
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = texto.encode("ascii", "ignore").decode("ascii")
+    texto = re.sub(r"[^a-z0-9\s]", " ", texto)
     texto = re.sub(r"\s+", " ", texto).strip()
     return texto
 

@@ -1,5 +1,107 @@
-from utils import limpar_texto
 import re
+import subprocess
+import sys
+from utils import limpar_texto
+
+# ── CARGA DE MODELOS (com fallback progressivo) ──
+
+_NLP = None
+_STEMMER = None
+_DISPONIVEL = "puro"
+
+
+def _carregar_nlp():
+    global _NLP, _DISPONIVEL
+    try:
+        import spacy
+        try:
+            _NLP = spacy.load("pt_core_news_sm")
+            _DISPONIVEL = "spacy"
+        except OSError:
+            subprocess.run(
+                [sys.executable, "-m", "spacy", "download", "pt_core_news_sm"],
+                check=True, capture_output=True
+            )
+            _NLP = spacy.load("pt_core_news_sm")
+            _DISPONIVEL = "spacy"
+    except ImportError:
+        pass
+
+
+def _carregar_stemmer():
+    global _STEMMER, _DISPONIVEL
+    try:
+        import nltk
+        try:
+            from nltk.stem import RSLPStemmer
+            _STEMMER = RSLPStemmer()
+        except LookupError:
+            nltk.download("rslp")
+            from nltk.stem import RSLPStemmer
+            _STEMMER = RSLPStemmer()
+        if _DISPONIVEL == "puro":
+            _DISPONIVEL = "nltk"
+    except ImportError:
+        pass
+
+
+_carregar_nlp()
+_carregar_stemmer()
+
+
+def _obter_lemas(texto):
+    if not _NLP:
+        return {}
+    doc = _NLP(texto)
+    lemas = {}
+    for tok in doc:
+        palavra = limpar_texto(tok.text)
+        lemma = limpar_texto(tok.lemma_)
+        if not palavra or len(palavra) <= 1:
+            continue
+        partes = palavra.split()
+        stem = lemma.split()[0] if lemma else palavra
+        for p in partes:
+            if len(p) > 1:
+                lemas[p] = stem if len(stem) > 1 else p
+    return lemas
+
+
+def _obter_stems(tokens):
+    if not _STEMMER:
+        return {}
+    return {t: _STEMMER.stem(t) for t in tokens if len(t) > 1}
+
+
+def _em_lexico(token, lexico, lemas=None, stems=None):
+    if token in lexico:
+        return True
+    if lemas and token in lemas and lemas[token] in lexico:
+        return True
+    if stems and token in stems and stems[token] in lexico:
+        return True
+    return False
+
+
+def _peso_no_lexico(token, pesos, lemas=None, stems=None):
+    if token in pesos:
+        return pesos[token]
+    if lemas and token in lemas and lemas[token] in pesos:
+        return pesos[lemas[token]]
+    if stems and token in stems and stems[token] in pesos:
+        return pesos[stems[token]]
+    return None
+
+
+def _obter_palavra_base(token, lemas=None, stems=None):
+    if lemas and token in lemas:
+        return lemas[token]
+    if stems and token in stems:
+        return stems[token]
+    return token
+
+
+# ── LÉXICO ──
 
 _POSITIVAS = {
     "sucesso", "vitoria", "vitorioso", "vitoriosa", "triunfo",
@@ -94,6 +196,7 @@ _POSITIVAS = {
     "cumprir", "cumpriu", "cumprira", "cumprimento",
     "descobrem", "descobriu", "descobrir", "descoberto",
     "atinge", "atingiu", "atingir", "maxima", "maximo",
+    "vitorias", "vitoriosa", "vitoriosas",
     "bateu", "bater", "exportacao", "exportacoes",
 }
 
@@ -225,6 +328,7 @@ _NEGATIVAS = {
     "conturbado", "turbulento", "convulsionado",
     "especulativo", "especulacao", "predatorio", "predatoria",
     "terror", "arrastao", "arrastoes",
+    "desmatamento", "desmatar", "desmatou",
     "vitima", "vitimas",
     "alvo", "prejudica", "prejudicam", "prejudicou", "prejudicar",
     "perdeu", "perder", "perde", "perdendo",
@@ -265,6 +369,7 @@ _AMBIGUAS_NEUTRO = {"reforma", "reformas", "mudanca", "mudancas",
                     "alterar", "alterou"}
 
 _CONTEXTOS_INVERSAO = {"juros", "taxa", "taxas", "imposto", "impostos",
+                       "ipi", "icms", "irpf", "irpj",
                        "inflacao", "desemprego", "criminalidade",
                        "violencia", "morte", "mortes", "homicidio",
                        "homicidios", "assassinato", "assassinatos",
@@ -295,7 +400,7 @@ _NEGACAO_FRACA = {
 }
 
 _NEGACAO_COMPOSTA = re.compile(
-    r"(longe\s+de\s+ser|deixou\s+a\s+desejar|ao\s+contrario|"
+    r"(longe\s+de\s+ser|deix[oa]u?\s+a\s+desejar|ao\s+contrario|"
     r"em\s+vez\s+de|falta\s+de|ausencia\s+de|apesar\s+de|"
     r"em\s+meio\s+a|contrario\s+do\s+que)", re.I
 )
@@ -334,6 +439,10 @@ _PADROES_POS_FRASE = re.compile(
     r"contratou|amplia|ampliou|expande)\b", re.I
 )
 
+_SUJEITO_VERBO_VERBOS = {"supera", "superou", "superar", "superado",
+                         "atinge", "atingiu", "atingir", "bate", "bater",
+                         "bateu", "vence", "venceu", "vencer"}
+
 _PALAVRAS_FORTES = {
     "morte": 2, "mortes": 2, "morto": 2, "mortos": 2, "morrer": 2,
     "matar": 2, "assassinato": 2, "assassinado": 2, "assassinada": 2,
@@ -354,45 +463,77 @@ _PALAVRAS_FORTES = {
 }
 
 
+# ── FUNÇÕES AUXILIARES ──
+
 def _peso_palavra(palavra):
     return _PALAVRAS_FORTES.get(palavra, 1)
 
 
-def _pontuar_texto(tokens, palavras_set, peso_base=1):
+def _peso_palavra_enhanced(token, lemas=None, stems=None):
+    p = _peso_no_lexico(token, _PALAVRAS_FORTES, lemas, stems)
+    return p if p is not None else 1
+
+
+def _pontuar_texto(tokens, palavras_set, lemas=None, stems=None, peso_base=1):
     score = 0
     for i, token in enumerate(tokens):
-        if token in palavras_set:
-            peso = _peso_palavra(token)
+        if _em_lexico(token, palavras_set, lemas, stems):
+            peso = _peso_palavra_enhanced(token, lemas, stems)
             if i > 0 and tokens[i - 1] in _INTENSIFICADORES:
-                peso = int(peso * 1.5)
+                peso = round(peso * 1.5)
             if i < len(tokens) - 1 and tokens[i + 1] in _INTENSIFICADORES:
-                peso = int(peso * 1.5)
+                peso = round(peso * 1.5)
             score += peso * peso_base
     return score
 
 
-def _processar_ambiguas(tokens):
+def _ajustar_sujeito_verbo(doc, tokens, lemas, stems):
+    """Ajusta score para casos de verbo positivo com sujeito negativo."""
     score = 0
+    for sent in doc.sents:
+        for tok in sent:
+            tok_clean = limpar_texto(tok.lemma_ if tok.lemma_ != "-PRON-" else tok.text)
+            if not tok_clean or len(tok_clean) <= 1:
+                continue
+            if not _em_lexico(tok_clean, _POSITIVAS, lemas, stems) and \
+               not _em_lexico(tok_clean, _SUJEITO_VERBO_VERBOS, lemas, stems):
+                continue
+            for child in tok.children:
+                if child.dep_ in ("nsubj", "nsubjpass"):
+                    subj = limpar_texto(child.text)
+                    if subj and _em_lexico(subj, _NEGATIVAS, lemas, stems):
+                        score -= 3
+    return score
+
+
+def _processar_ambiguas(tokens, lemas=None, stems=None, doc=None):
+    score = 0
+
+    if doc:
+        score += _ajustar_sujeito_verbo(doc, tokens, lemas, stems)
+
     for i, token in enumerate(tokens):
-        if token in _AMBIGUAS_ASC:
-            peso = _PALAVRAS_FORTES.get(token, 1)
-            vizinhos = tokens[max(0, i - 2):i] + tokens[i + 1:min(len(tokens), i + 5)]
-            tem_neg = any(v in _NEGATIVAS for v in vizinhos)
+        if _em_lexico(token, _AMBIGUAS_ASC, lemas, stems):
+            peso = _peso_palavra_enhanced(token, lemas, stems)
+            vizinhos = tokens[max(0, i - 5):i] + tokens[i + 1:min(len(tokens), i + 6)]
+            tem_neg = any(_em_lexico(v, _NEGATIVAS, lemas, stems) for v in vizinhos)
             if tem_neg:
                 score -= 2 * peso
             else:
                 score += peso
-        elif token in _AMBIGUAS_DESC:
-            vizinhos = tokens[max(0, i - 2):i] + tokens[i + 1:min(len(tokens), i + 5)]
-            tem_inversao = any(v in _CONTEXTOS_INVERSAO for v in vizinhos)
+
+        elif _em_lexico(token, _AMBIGUAS_DESC, lemas, stems):
+            vizinhos = tokens[max(0, i - 5):i] + tokens[i + 1:min(len(tokens), i + 6)]
+            tem_inversao = any(_em_lexico(v, _CONTEXTOS_INVERSAO, lemas, stems) for v in vizinhos)
             if tem_inversao:
                 score += 3
             else:
                 score -= 2
-        elif token in _AMBIGUAS_NEUTRO:
-            vizinhos = tokens[max(0, i - 2):i] + tokens[i + 1:min(len(tokens), i + 4)]
-            tem_neg = any(v in _NEGATIVAS for v in vizinhos)
-            tem_pos = any(v in _POSITIVAS for v in vizinhos)
+
+        elif _em_lexico(token, _AMBIGUAS_NEUTRO, lemas, stems):
+            vizinhos = tokens[max(0, i - 5):i] + tokens[i + 1:min(len(tokens), i + 5)]
+            tem_neg = any(_em_lexico(v, _NEGATIVAS, lemas, stems) for v in vizinhos)
+            tem_pos = any(_em_lexico(v, _POSITIVAS, lemas, stems) for v in vizinhos)
             if tem_neg and not tem_pos:
                 score -= 1
             elif tem_pos and not tem_neg:
@@ -400,7 +541,13 @@ def _processar_ambiguas(tokens):
     return score
 
 
-def _processar_negacao(tokens):
+def _processar_negacao(tokens, lemas=None, stems=None, doc=None):
+    if doc and _DISPONIVEL == "spacy":
+        return _processar_negacao_dependencias(doc, lemas, stems)
+    return _processar_negacao_janela(tokens, lemas, stems)
+
+
+def _processar_negacao_janela(tokens, lemas=None, stems=None):
     score = 0
     for i, token in enumerate(tokens):
         if token in _NEGACAO:
@@ -410,13 +557,46 @@ def _processar_negacao(tokens):
         else:
             continue
         for j in range(i + 1, min(i + 4, len(tokens))):
-            if tokens[j] in _POSITIVAS:
+            t = tokens[j]
+            if _em_lexico(t, _POSITIVAS, lemas, stems):
                 score -= peso_neg
-            elif tokens[j] in _NEGATIVAS:
+            elif _em_lexico(t, _NEGATIVAS, lemas, stems):
                 score += peso_neg
-            elif tokens[j] in _AMBIGUAS_ASC:
+            elif _em_lexico(t, _AMBIGUAS_ASC, lemas, stems):
                 score -= peso_neg
-            elif tokens[j] in _AMBIGUAS_DESC:
+            elif _em_lexico(t, _AMBIGUAS_DESC, lemas, stems):
+                score += peso_neg
+    return score
+
+
+def _processar_negacao_dependencias(doc, lemas=None, stems=None):
+    score = 0
+    for token in doc:
+        token_clean = limpar_texto(token.lemma_ if token.lemma_ != "-PRON-" else token.text)
+        if not token_clean or len(token_clean) <= 1:
+            continue
+        if token_clean in _NEGACAO:
+            peso_neg = 3
+        elif token_clean in _NEGACAO_FRACA:
+            peso_neg = 2
+        else:
+            continue
+
+        head = token.head
+        affected = set()
+        for child in head.subtree:
+            child_clean = limpar_texto(child.text)
+            if child_clean and child.i > token.i and len(child_clean) > 1:
+                affected.add(child_clean)
+
+        for af in affected:
+            if _em_lexico(af, _POSITIVAS, lemas, stems):
+                score -= peso_neg
+            elif _em_lexico(af, _NEGATIVAS, lemas, stems):
+                score += peso_neg
+            elif _em_lexico(af, _AMBIGUAS_ASC, lemas, stems):
+                score -= peso_neg
+            elif _em_lexico(af, _AMBIGUAS_DESC, lemas, stems):
                 score += peso_neg
     return score
 
@@ -445,14 +625,19 @@ def analisar_sentimento(manchete):
     if not tokens:
         return "Neutro"
 
+    lemas = _obter_lemas(texto)
+    stems = _obter_stems(tokens) if not lemas else None
+
+    doc = _NLP(texto) if _NLP else None
+
     score = 0
 
-    score += _pontuar_texto(tokens, _POSITIVAS, peso_base=1)
-    score -= _pontuar_texto(tokens, _NEGATIVAS, peso_base=1)
+    score += _pontuar_texto(tokens, _POSITIVAS, lemas, stems, peso_base=1)
+    score -= _pontuar_texto(tokens, _NEGATIVAS, lemas, stems, peso_base=1)
 
-    score += _processar_ambiguas(tokens)
+    score += _processar_ambiguas(tokens, lemas, stems, doc)
 
-    score += _processar_negacao(tokens)
+    score += _processar_negacao(tokens, lemas, stems, doc)
 
     score += _processar_padroes(texto)
 
