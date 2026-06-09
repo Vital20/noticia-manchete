@@ -18,13 +18,16 @@ def _carregar_nlp():
             _NLP = spacy.load("pt_core_news_sm")
             _DISPONIVEL = "spacy"
         except OSError:
-            subprocess.run(
-                [sys.executable, "-m", "spacy", "download", "pt_core_news_sm"],
-                check=True, capture_output=True
-            )
-            _NLP = spacy.load("pt_core_news_sm")
-            _DISPONIVEL = "spacy"
-    except ImportError:
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "spacy", "download", "pt_core_news_sm"],
+                    check=True, capture_output=True
+                )
+                _NLP = spacy.load("pt_core_news_sm")
+                _DISPONIVEL = "spacy"
+            except Exception:
+                pass
+    except Exception:
         pass
 
 
@@ -36,17 +39,23 @@ def _carregar_stemmer():
             from nltk.stem import RSLPStemmer
             _STEMMER = RSLPStemmer()
         except LookupError:
-            nltk.download("rslp")
-            from nltk.stem import RSLPStemmer
-            _STEMMER = RSLPStemmer()
-        if _DISPONIVEL == "puro":
+            try:
+                nltk.download("rslp")
+                from nltk.stem import RSLPStemmer
+                _STEMMER = RSLPStemmer()
+            except Exception:
+                pass
+        if _STEMMER and _DISPONIVEL == "puro":
             _DISPONIVEL = "nltk"
-    except ImportError:
+    except Exception:
         pass
 
 
-_carregar_nlp()
-_carregar_stemmer()
+try:
+    _carregar_nlp()
+    _carregar_stemmer()
+except Exception:
+    pass
 
 
 def _obter_lemas(texto):
