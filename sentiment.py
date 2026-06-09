@@ -209,6 +209,20 @@ _POSITIVAS = {
     "bateu", "bater", "exportacao", "exportacoes",
     "implementa", "implementou", "expande", "expandiu",
     "retomada", "sobra", "bonanca",
+
+    "aprova", "aprovou", "aprovar", "aprovado",
+    "libera", "liberou", "liberar", "liberado",
+    "atende", "atendeu", "atender", "atendido",
+    "beneficia", "beneficiou", "beneficiar", "beneficiado",
+    "incorpora", "incorporou", "incorporar", "incorporado",
+    "desenvolve", "desenvolveu", "desenvolver", "desenvolvido",
+    "descobre", "descobrem", "descobriu", "descobrir",
+    "conquista", "conquistou", "conquistar", "conquistado",
+    "assinam", "assinou", "assinado", "assinar",
+    "tira", "tirou", "tirar", "retira", "retirou",
+    "avanca", "avancou", "avancar", "avancado",
+    "vacina", "vacinas", "vacinacao",
+    "moradia", "moradias",
 }
 
 _NEGATIVAS = {
@@ -369,22 +383,35 @@ _NEGATIVAS = {
     "extorquir", "extorquiu",
     "dilapidar", "dilapidou",
     "violar", "violou",
-    "confessa", "confessou", "recua", "recuou",
+    "confessa", "confessou",
     "cede", "cedeu", "falha", "erra", "errou",
     "omite", "omitiu", "esconde", "escondeu",
     "desgoverno", "caos", "retrocesso",
     "sucateamento", "desmonte", "apagao",
     "quebrar", "quebrando",
+    "incendio", "incendios", "tempestade", "tempestades",
+    "enchente", "enchentes", "assedio", "assedios",
+    "inundacao", "seca", "seca", "estiagem",
+    "desabamento", "desabou", "desabar",
+    "colisao", "capotamento", "naufragio",
+    "atropelamento", "explosao", "explosoes",
+    "deslizamento", "desmoronamento",
+    "poluicao", "poluente", "contaminante",
+    "dengue", "cancer", "tuberculose", "malaria",
+    "covid", "covid-19", "surtos", "surto",
 }
 
 _AMBIGUAS_ASC = {"aumento", "aumenta", "aumentou", "aumentar",
-                 "crescimento", "cresceu", "cresce", "crescente",
+                 "crescimento", "cresceu", "cresce", "crescem", "crescer",
                  "recorde", "recordes", "alta", "altas",
-                 "dispara", "disparou", "disparar", "dispare"}
+    "dispara", "disparou", "disparar", "dispare",
+    "sobe", "subiu", "subir", "sobe",
+    "acima",}
 
 _AMBIGUAS_DESC = {"queda", "cair", "caiu", "caindo", "cai",
                   "reducao", "reducoes", "reduz", "reduziu", "reduzir",
-                  "corte", "cortes", "cortar", "cortou"}
+                  "corte", "cortes", "cortar", "cortou",
+                  "recua", "recuou", "recuar"}
 
 _AMBIGUAS_NEUTRO = {"reforma", "reformas", "mudanca", "mudancas",
                     "mudar", "mudou", "alteracao", "alteracoes",
@@ -396,7 +423,11 @@ _CONTEXTOS_INVERSAO = {"juros", "taxa", "taxas", "imposto", "impostos",
                        "violencia", "morte", "mortes", "homicidio",
                        "homicidios", "assassinato", "assassinatos",
                        "tragedia", "tragedias", "corrupcao", "corruptos",
-                       "gastos", "gasto", "burocracia"}
+                       "gastos", "gasto", "burocracia",
+                       "dolar", "preco", "precos",
+                       "gasolina", "combustivel", "combustiveis",
+                       "alimento", "alimentos", "energia",
+                       "dengue", "casos"}
 
 _INTENSIFICADORES = {
     "muito", "mais", "maior", "maiores", "grande", "grandes",
@@ -611,7 +642,11 @@ def _processar_ambiguas(tokens, lemas=None, stems=None, doc=None):
         if _em_lexico(token, _AMBIGUAS_ASC, lemas, stems):
             peso = _peso_palavra_enhanced(token, lemas, stems)
             vizinhos = tokens[max(0, i - 5):i] + tokens[i + 1:min(len(tokens), i + 6)]
-            tem_neg = any(_em_lexico(v, _NEGATIVAS, lemas, stems) for v in vizinhos)
+            tem_neg = any(
+                _em_lexico(v, _NEGATIVAS, lemas, stems) or
+                _em_lexico(v, _CONTEXTOS_INVERSAO, lemas, stems)
+                for v in vizinhos
+            )
             if tem_neg:
                 score -= 2 * peso
             else:
@@ -701,7 +736,8 @@ _FRAMING_NEG = re.compile(
     r"sem\s+(?:previsao|solucao|fim|controle|limite)|"
     r"apos\s+(?:denuncia|escandalo|polemica|revelacao|acusacao)|"
     r"sob\s+(?:pressao|investigacao|fogo|ataque|suspeita)|"
-    r"governo\s+(?:admite|confessa|recua|cede|falha)"
+    r"governo\s+(?:admite|confessa|recua|cede|falha)|"
+    r"atinge\s+menor"
     r")\b", re.I
 )
 
@@ -760,20 +796,15 @@ def _processar_padroes(texto, tokens, lemas, stems):
     return score, forca_neutro
 
 
-def analisar_sentimento(manchete):
-    if not manchete or not isinstance(manchete, str):
-        return "Neutro"
-
-    texto = manchete.strip()
+def _calcular_score(texto):
+    """Calcula o score numérico de uma manchete."""
     texto_limpo = limpar_texto(texto)
     tokens = texto_limpo.split()
-
     if not tokens:
-        return "Neutro"
+        return 0, False
 
     lemas = _obter_lemas(texto)
     stems = _obter_stems(tokens) if not lemas else None
-
     doc = _NLP(texto) if _NLP else None
 
     score = 0
@@ -789,14 +820,38 @@ def analisar_sentimento(manchete):
     score += padroes_score
 
     if forca_neutro:
-        return "Neutro"
+        return score, True
 
     if _NEGACAO_COMPOSTA.search(texto):
         score -= 3
 
-    if score >= 2:
+    return score, False
+
+
+def analisar_sentimento(manchete):
+    if not manchete or not isinstance(manchete, str):
+        return "Neutro"
+    score, forca_neutro = _calcular_score(manchete.strip())
+    if forca_neutro:
+        return "Neutro"
+    if score >= 1:
         return "Positivo"
-    elif score <= -2:
+    elif score <= -1:
         return "Negativo"
     else:
         return "Neutro"
+
+
+def analisar_sentimento_detalhado(manchete):
+    """Retorna (classificacao, score) com análise detalhada."""
+    if not manchete or not isinstance(manchete, str):
+        return "Neutro", 0
+    score, forca_neutro = _calcular_score(manchete.strip())
+    if forca_neutro:
+        return "Neutro", score
+    if score >= 1:
+        return "Positivo", score
+    elif score <= -1:
+        return "Negativo", score
+    else:
+        return "Neutro", score

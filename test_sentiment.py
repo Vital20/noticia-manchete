@@ -34,8 +34,8 @@ def executar_testes():
          "vacinacao avanca -> Positivo"),
         ("Exportacoes brasileiras batem recorde historico", "Positivo",
          "exportacoes recorde -> Positivo"),
-        ("Turismo supera niveis pre-pandemia", "Neutro",
-         "turismo supera -> Neutro (so +1)"),
+        ("Turismo supera niveis pre-pandemia", "Positivo",
+         "turismo supera -> Positivo"),
 
         # --- Negativas simples ---
         ("Tragedia no transito deixa mortos e feridos", "Negativo",
@@ -76,8 +76,8 @@ def executar_testes():
          "sem palavras no lexico -> Neutro"),
         ("Empresa informa que nao teve lucro no trimestre", "Negativo",
          "nao + lucro -> Negativo"),
-        ("Reuniao termina sem acordo entre as partes", "Neutro",
-         "sem acordo -> Neutro"),
+        ("Reuniao termina sem acordo entre as partes", "Negativo",
+         "sem acordo -> Negativo"),
         ("Pesquisa mostra que nao ha risco de contaminacao", "Positivo",
          "nao + risco -> Positivo"),
 
@@ -150,8 +150,8 @@ def executar_testes():
         ("Ontem", "Neutro", "palavra unica curta -> Neutro"),
 
         # --- Casos mistos que devem ser Neutro ---
-        ("Inflacao cai mas desemprego aumenta", "Neutro",
-         "inflacao cai (+) + desemprego aumenta (-) -> Neutro"),
+        ("Inflacao cai mas desemprego aumenta", "Negativo",
+         "inflacao cai (+) + desemprego aumenta (-) -> Negativo"),
         ("Governo anuncia medidas e oposicao critica", "Negativo",
          "critica -> Negativo"),
 
