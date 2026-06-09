@@ -351,11 +351,11 @@ with tab1:
         with r1a:
             fig1 = grafico_sentimentos(df)
             if fig1:
-                st.plotly_chart(fig1, use_container_width=True)
+                st.plotly_chart(fig1, use_container_width=True, key="tab1_sentiment")
         with r1b:
             fig2 = grafico_quantidade_portais(df)
             if fig2:
-                st.plotly_chart(fig2, use_container_width=True)
+                st.plotly_chart(fig2, use_container_width=True, key="tab1_portal_qt")
 
         # ── ROW 2: Portal Comparison + Timeline ──
         st.markdown(
@@ -366,13 +366,13 @@ with tab1:
         with r2a:
             fig3 = grafico_comparativo_portais(df)
             if fig3:
-                st.plotly_chart(fig3, use_container_width=True)
+                st.plotly_chart(fig3, use_container_width=True, key="tab1_compare")
             else:
                 st.info("Poucos dados para comparacao entre portais.")
         with r2b:
             fig5 = timeline_noticias(df)
             if fig5:
-                st.plotly_chart(fig5, use_container_width=True)
+                st.plotly_chart(fig5, use_container_width=True, key="tab1_timeline")
             else:
                 st.info("Poucos dados para linha do tempo.")
 
@@ -512,11 +512,11 @@ with tab2:
             with comp_row_a:
                 fig_comp = grafico_comparacao_temas(df_a, df_b, nome_a, nome_b)
                 if fig_comp:
-                    st.plotly_chart(fig_comp, use_container_width=True)
+                    st.plotly_chart(fig_comp, use_container_width=True, key="comp_chart")
             with comp_row_b:
                 fig_tl = timeline_dupla(df_a, df_b, nome_a, nome_b)
                 if fig_tl:
-                    st.plotly_chart(fig_tl, use_container_width=True)
+                    st.plotly_chart(fig_tl, use_container_width=True, key="timeline_chart")
 
             # ── ROW 2: Portal charts side by side ──
             st.markdown(
@@ -533,7 +533,7 @@ with tab2:
                 if not df_a.empty:
                     fig_pa = grafico_quantidade_portais(df_a)
                     if fig_pa:
-                        st.plotly_chart(fig_pa, use_container_width=True)
+                        st.plotly_chart(fig_pa, use_container_width=True, key="portal_a_chart")
                 else:
                     st.info("Sem dados")
             with cp_b:
@@ -545,7 +545,7 @@ with tab2:
                 if not df_b.empty:
                     fig_pb = grafico_quantidade_portais(df_b)
                     if fig_pb:
-                        st.plotly_chart(fig_pb, use_container_width=True)
+                        st.plotly_chart(fig_pb, use_container_width=True, key="portal_b_chart")
                 else:
                     st.info("Sem dados")
 
@@ -696,7 +696,7 @@ with tab3:
             )
             fig_heat = heatmap_portais(df_filtrado)
             if fig_heat:
-                st.plotly_chart(fig_heat, use_container_width=True)
+                st.plotly_chart(fig_heat, use_container_width=True, key="tab4_heatmap")
 
             # ── Timeline por portal + Palavras lado a lado ──
             st.markdown(
@@ -707,13 +707,13 @@ with tab3:
             with tl_col:
                 fig_tl_p = timeline_por_portal(df_filtrado)
                 if fig_tl_p:
-                    st.plotly_chart(fig_tl_p, use_container_width=True)
+                    st.plotly_chart(fig_tl_p, use_container_width=True, key="tab4_timeline")
                 else:
                     st.info("Poucos dados para timeline.")
             with pa_col:
                 fig_pal = tabela_palavras_por_portal(df_filtrado)
                 if fig_pal:
-                    st.plotly_chart(fig_pal, use_container_width=True)
+                    st.plotly_chart(fig_pal, use_container_width=True, key="tab4_keywords")
                 else:
                     st.info("Poucos dados para palavras-chave.")
 
