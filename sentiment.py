@@ -207,6 +207,8 @@ _POSITIVAS = {
     "atinge", "atingiu", "atingir", "maxima", "maximo",
     "vitorias", "vitoriosa", "vitoriosas",
     "bateu", "bater", "exportacao", "exportacoes",
+    "implementa", "implementou", "expande", "expandiu",
+    "retomada", "sobra", "bonanca",
 }
 
 _NEGATIVAS = {
@@ -362,6 +364,17 @@ _NEGATIVAS = {
     "sequestrou", "sequestrar",
     "extorsao", "chacina", "chacinas", "massacre",
     "conspiracao", "golpismo",
+    "arruinar", "arruinou", "arruinando",
+    "sabotar", "sabotou", "sabotando",
+    "extorquir", "extorquiu",
+    "dilapidar", "dilapidou",
+    "violar", "violou",
+    "confessa", "confessou", "recua", "recuou",
+    "cede", "cedeu", "falha", "erra", "errou",
+    "omite", "omitiu", "esconde", "escondeu",
+    "desgoverno", "caos", "retrocesso",
+    "sucateamento", "desmonte", "apagao",
+    "quebrar", "quebrando",
 }
 
 _AMBIGUAS_ASC = {"aumento", "aumenta", "aumentou", "aumentar",
@@ -396,6 +409,19 @@ _INTENSIFICADORES = {
     "grave", "gravemente", "serio", "seriamente",
     "urgente", "urgentemente", "altissimo", "altissima",
 }
+
+_ADVERBIOS_POLARIDADE = {
+    "infelizmente": -2, "lamentavelmente": -2,
+    "felizmente": 2, "surpreendentemente": 1,
+    "curiosamente": 1, "estranhamente": -1,
+    "paradoxalmente": -1, "inexplicavelmente": -1,
+    "naturalmente": 1, "obviamente": 1,
+}
+
+_MODAIS = {"pode", "podem", "poderia", "poderiam",
+           "deve", "devem", "deveria", "deveriam",
+           "precisa", "precisam", "precisaria",
+           "parece", "parecem", "parecia"}
 
 _NEGACAO = {
     "nao", "nunca", "jamais", "nem", "ninguem",
@@ -469,6 +495,12 @@ _PALAVRAS_FORTES = {
     "maravilhoso": 2, "fenomenal": 2, "brilhante": 2,
     "campeao": 2, "campea": 2, "vencedor": 2, "vencedora": 2,
     "superavit": 2, "perdeu": 2, "alvo": 2,
+    "quebra": 2, "quebrou": 2, "quebrar": 2,
+    "arruinar": 2, "arruinou": 2,
+    "sabotar": 2, "sabotou": 2,
+    "extorquir": 2, "extorquiu": 2,
+    "dilapidar": 2, "dilapidou": 2,
+    "caos": 2, "desgoverno": 2,
 }
 
 
@@ -496,22 +528,76 @@ def _pontuar_texto(tokens, palavras_set, lemas=None, stems=None, peso_base=1):
     return score
 
 
-def _ajustar_sujeito_verbo(doc, tokens, lemas, stems):
-    """Ajusta score para casos de verbo positivo com sujeito negativo."""
+def _propagar_vies(doc, tokens, lemas, stems):
+    """Propaga viés por dependências sintáticas (spaCy).
+
+    Regras:
+    1. Verbo positivo + sujeito negativo => -3
+    2. Verbo negativo + sujeito => -1 (ou -2 se sujeito tb negativo)
+    3. Verbo negativo + objeto direto => -1
+    4. Advérbios de polaridade => score direto
+    5. Verbos modais reduzem peso de palavras no escopo
+    """
+    if not doc or _DISPONIVEL != "spacy":
+        return 0
+
     score = 0
+
+    # Regras 1-3: varre verbos e suas dependências
     for sent in doc.sents:
         for tok in sent:
             tok_clean = limpar_texto(tok.lemma_ if tok.lemma_ != "-PRON-" else tok.text)
             if not tok_clean or len(tok_clean) <= 1:
                 continue
-            if not _em_lexico(tok_clean, _POSITIVAS, lemas, stems) and \
-               not _em_lexico(tok_clean, _SUJEITO_VERBO_VERBOS, lemas, stems):
-                continue
-            for child in tok.children:
-                if child.dep_ in ("nsubj", "nsubjpass"):
-                    subj = limpar_texto(child.text)
-                    if subj and _em_lexico(subj, _NEGATIVAS, lemas, stems):
-                        score -= 3
+
+            # Regra 1: verbo positivo + sujeito negativo
+            if _em_lexico(tok_clean, _POSITIVAS, lemas, stems) or \
+               _em_lexico(tok_clean, _SUJEITO_VERBO_VERBOS, lemas, stems):
+                for child in tok.children:
+                    if child.dep_ in ("nsubj", "nsubjpass"):
+                        subj = limpar_texto(child.text)
+                        if subj and _em_lexico(subj, _NEGATIVAS, lemas, stems):
+                            score -= 3
+
+            # Regra 2: verbo negativo propaga para sujeito
+            if _em_lexico(tok_clean, _NEGATIVAS, lemas, stems):
+                for child in tok.children:
+                    if child.dep_ in ("nsubj", "nsubjpass"):
+                        subj = limpar_texto(child.text)
+                        if subj:
+                            if _em_lexico(subj, _NEGATIVAS, lemas, stems):
+                                score -= 2
+                            else:
+                                score -= 1
+
+                    # Regra 3: verbo negativo propaga para objeto direto
+                    if child.dep_ == "obj":
+                        obj = limpar_texto(child.text)
+                        if obj and len(obj) > 1:
+                            score -= 1
+
+    # Regra 4: advérbios de polaridade
+    for tok in doc:
+        tok_lower = limpar_texto(tok.text.lower())
+        if tok_lower in _ADVERBIOS_POLARIDADE:
+            score += _ADVERBIOS_POLARIDADE[tok_lower]
+
+    # Regra 5: modais reduzem intensidade (só palavras de peso >= 2)
+    for tok in doc:
+        tok_clean = limpar_texto(tok.text.lower() if tok.text else "")
+        if tok_clean in _MODAIS:
+            for child in tok.head.subtree:
+                if child.i <= tok.i:
+                    continue
+                child_clean = limpar_texto(child.lemma_ if child.lemma_ != "-PRON-" else child.text)
+                if child_clean:
+                    peso = _peso_palavra_enhanced(child_clean, lemas, stems)
+                    if peso >= 2:
+                        if _em_lexico(child_clean, _NEGATIVAS, lemas, stems):
+                            score += 1
+                        elif _em_lexico(child_clean, _POSITIVAS, lemas, stems):
+                            score -= 1
+
     return score
 
 
@@ -519,7 +605,7 @@ def _processar_ambiguas(tokens, lemas=None, stems=None, doc=None):
     score = 0
 
     if doc:
-        score += _ajustar_sujeito_verbo(doc, tokens, lemas, stems)
+        score += _propagar_vies(doc, tokens, lemas, stems)
 
     for i, token in enumerate(tokens):
         if _em_lexico(token, _AMBIGUAS_ASC, lemas, stems):
@@ -610,8 +696,40 @@ def _processar_negacao_dependencias(doc, lemas=None, stems=None):
     return score
 
 
-def _processar_padroes(texto):
+_FRAMING_NEG = re.compile(
+    r"\b(?:"
+    r"sem\s+(?:previsao|solucao|fim|controle|limite)|"
+    r"apos\s+(?:denuncia|escandalo|polemica|revelacao|acusacao)|"
+    r"sob\s+(?:pressao|investigacao|fogo|ataque|suspeita)|"
+    r"governo\s+(?:admite|confessa|recua|cede|falha)"
+    r")\b", re.I
+)
+
+_FRAMING_NEG_SIMPLES = re.compile(
+    r"\b(?:rebate|acusa|nega|nego|negou)\b", re.I
+)
+
+_FRAMING_FORCA_NEUTRO = re.compile(
+    r"\b(?:entenda|explica|como\s+funciona|como\s+se\s+da|veja\s+como)\b", re.I
+)
+
+_INTENS_COMPOSTOS = {
+    r"\bcada\s+vez\s+mais\b": 1,
+    r"\bsem\s+precedentes\b": 2,
+    r"\bnunca\s+antes\s+visto\b": 2,
+    r"\brecorde\s+historico\b": 1,
+    r"\bmais\s+e\s+mais\b": 1,
+    r"\bpela\s+primeira\s+vez\b": 0,
+}
+
+_INTENS_NEG = re.compile(
+    r"\b(cada\s+vez\s+mais|sem\s+precedentes|nunca\s+antes\s+visto)\b", re.I
+)
+
+def _processar_padroes(texto, tokens, lemas, stems):
     score = 0
+    forca_neutro = False
+
     if _PADROES_NEGATIVOS.search(texto):
         score -= 2
     if _PADROES_POSITIVOS.search(texto):
@@ -620,7 +738,26 @@ def _processar_padroes(texto):
         score -= 2
     if _PADROES_POS_FRASE.search(texto):
         score += 2
-    return score
+
+    # Frente 3: padrões de framing jornalístico
+    if _FRAMING_NEG.search(texto):
+        score -= 2
+    if _FRAMING_NEG_SIMPLES.search(texto):
+        score -= 1
+
+    # Frente 3: força neutro (manchetes explicativas)
+    if _FRAMING_FORCA_NEUTRO.search(texto):
+        forca_neutro = True
+
+    # Frente 4: intensificadores compostos
+    if _INTENS_NEG.search(texto):
+        for token in tokens:
+            if _em_lexico(token, _NEGATIVAS, lemas, stems):
+                peso = _peso_palavra_enhanced(token, lemas, stems)
+                score -= peso
+                break
+
+    return score, forca_neutro
 
 
 def analisar_sentimento(manchete):
@@ -648,7 +785,11 @@ def analisar_sentimento(manchete):
 
     score += _processar_negacao(tokens, lemas, stems, doc)
 
-    score += _processar_padroes(texto)
+    padroes_score, forca_neutro = _processar_padroes(texto, tokens, lemas, stems)
+    score += padroes_score
+
+    if forca_neutro:
+        return "Neutro"
 
     if _NEGACAO_COMPOSTA.search(texto):
         score -= 3

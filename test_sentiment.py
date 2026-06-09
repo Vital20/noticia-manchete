@@ -155,6 +155,58 @@ def executar_testes():
         ("Governo anuncia medidas e oposicao critica", "Negativo",
          "critica -> Negativo"),
 
+        # --- Frente 1: Lexico expandido (falsos neutros) ---
+        ("Lula quebra o Brasil", "Negativo",
+         "quebra peso 2 -> Negativo"),
+        ("Governo admite fracasso no programa", "Negativo",
+         "admite + fracasso = -2 -> Negativo"),
+        ("Governo arruinou a economia", "Negativo",
+         "arruinou peso 2 -> Negativo"),
+        ("Governo sabotou o projeto", "Negativo",
+         "sabotou peso 2 -> Negativo"),
+        ("Caos total na administracao publica", "Negativo",
+         "caos peso 2 -> Negativo"),
+        ("Desgoverno arruinou o pais", "Negativo",
+         "desgoverno + arruinou -> Negativo"),
+        ("Desmonte da educacao preocupa", "Negativo",
+         "desmonte + preocupa -> Negativo"),
+        ("Retomada do crescimento anima mercado", "Positivo",
+         "retomada + crescimento + anima -> Positivo"),
+        ("Governo violou acordo internacional", "Negativo",
+         "violou -> Negativo"),
+
+        # --- Frente 2: Propagacao de vies ---
+        ("Infelizmente governo recuou", "Negativo",
+         "aderbio infelizmente -2 + recuou -> Negativo"),
+        ("Felizmente inflacao caiu", "Positivo",
+         "aderbio felizmente +2 + inversao de queda -> Positivo"),
+        ("Governo atacou o programa social", "Negativo",
+         "verbo negativo propaga para objeto -> Negativo"),
+        ("Lamentavelmente governo quebrou o pais", "Negativo",
+         "aderbio + verbo forte -> Negativo"),
+        ("Governo dilapidou os recursos publicos", "Negativo",
+         "dilapidou peso 2 -> Negativo"),
+        ("Governo pode quebrar o pais", "Negativo",
+         "modal pode + quebrar + obj pais -> Negativo (score -2)"),
+
+        # --- Frente 3: Padroes de framing jornalistico ---
+        ("Sem previsao para volta as aulas", "Negativo",
+         "framing sem previsao -> Negativo"),
+        ("Apos denuncia ministro pede afastamento", "Negativo",
+         "framing apos denuncia + denuncia -> Negativo"),
+        ("Governo sob pressao para explicar gastos", "Negativo",
+         "framing sob pressao -> Negativo"),
+        ("Entenda o que mudou com a reforma", "Neutro",
+         "forca neutro entenda -> Neutro"),
+        ("Ministro nega acusacoes", "Negativo",
+         "nega + acusacoes = -2 -> Negativo"),
+
+        # --- Frente 4: Intensificadores compostos ---
+        ("Cada vez mais brasileiros na pobreza", "Negativo",
+         "cada vez mais + pobreza -> Negativo"),
+        ("Nunca antes visto tamanho desastre", "Negativo",
+         "nunca antes visto + desastre peso 2 -> Negativo"),
+
         # --- Variacoes morfologicas (teste de lematizacao/stemming) ---
         ("Pesquisadores descobriram nova vacina promissora", "Positivo",
          "descobriram (variacao de descobrir) -> Positivo"),
