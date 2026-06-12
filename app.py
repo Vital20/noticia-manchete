@@ -442,27 +442,33 @@ with tab2:
     comp_btn = st.button("🔍 Comparar Temas", type="primary", use_container_width=True)
 
     if comp_btn and tema_a.strip() and tema_b.strip():
-        with st.status("Coletando dados..."):
-            st.write(f"Buscando **{tema_a}**...")
-            m_a = coletar_manchetes(tema_a.strip())
-            if m_a:
-                for m in m_a: m["tom"] = analisar_sentimento(m["manchete"])
-                df_a = pd.DataFrame(m_a)[["portal", "manchete", "tom", "data", "link", "horario_coleta"]]
-                df_a.columns = ["Portal", "Manchete", "Tom", "Data", "Link", "Coleta"]
-            else:
-                df_a = pd.DataFrame()
+        try:
+            with st.status("Coletando dados..."):
+                st.write(f"Buscando **{tema_a}**...")
+                m_a = coletar_manchetes(tema_a.strip())
+                if m_a:
+                    for m in m_a: m["tom"] = analisar_sentimento(m["manchete"])
+                    df_a = pd.DataFrame(m_a)[["portal", "manchete", "tom", "data", "link", "horario_coleta"]]
+                    df_a.columns = ["Portal", "Manchete", "Tom", "Data", "Link", "Coleta"]
+                else:
+                    st.warning(f"Nenhum resultado para '{tema_a}'")
+                    df_a = pd.DataFrame()
 
-            st.write(f"Buscando **{tema_b}**...")
-            m_b = coletar_manchetes(tema_b.strip())
-            if m_b:
-                for m in m_b: m["tom"] = analisar_sentimento(m["manchete"])
-                df_b = pd.DataFrame(m_b)[["portal", "manchete", "tom", "data", "link", "horario_coleta"]]
-                df_b.columns = ["Portal", "Manchete", "Tom", "Data", "Link", "Coleta"]
-            else:
-                df_b = pd.DataFrame()
+                st.write(f"Buscando **{tema_b}**...")
+                m_b = coletar_manchetes(tema_b.strip())
+                if m_b:
+                    for m in m_b: m["tom"] = analisar_sentimento(m["manchete"])
+                    df_b = pd.DataFrame(m_b)[["portal", "manchete", "tom", "data", "link", "horario_coleta"]]
+                    df_b.columns = ["Portal", "Manchete", "Tom", "Data", "Link", "Coleta"]
+                else:
+                    st.warning(f"Nenhum resultado para '{tema_b}'")
+                    df_b = pd.DataFrame()
 
-        st.session_state.comp_dados = {"a": df_a, "b": df_b, "nome_a": tema_a.strip(), "nome_b": tema_b.strip()}
-        st.session_state.comp_resultado = True
+            st.session_state.comp_dados = {"a": df_a, "b": df_b, "nome_a": tema_a.strip(), "nome_b": tema_b.strip()}
+            st.session_state.comp_resultado = True
+        except Exception as e:
+            st.error(f"Erro ao coletar dados: {e}")
+        st.rerun()
 
     if st.session_state.comp_resultado:
         d = st.session_state.comp_dados
