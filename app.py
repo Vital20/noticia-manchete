@@ -587,7 +587,7 @@ with tab2:
             if stub_a or stub_b:
                 if st.button("✨ Gerar Resumo Comparativo", type="primary", key="resumo_tab2"):
                     with st.spinner("Analisando..."):
-                        resumo = gerar_resumo(stub_a + stub_b)
+                        resumo_texto = gerar_resumo(stub_a + stub_b)
                         ta, pa, na, neua = _metricas(df_a)
                         tb, pb, nb, neub = _metricas(df_b)
                         extra = (
@@ -595,8 +595,7 @@ with tab2:
                             f"({pa} positivas, {na} negativas), enquanto **{nome_b}** gerou {tb} "
                             f"({pb} positivas, {nb} negativas)."
                         )
-                        ta, pa, na, neua = _metricas(df_a)
-                        tb, pb, nb, neub = _metricas(df_b)
+                        st.session_state.resumo_comp_texto = resumo_texto + extra
                     st.rerun()
                 if st.session_state.get("resumo_comp_texto"):
                     st.markdown(f'<div class="info-box">{st.session_state.resumo_comp_texto}</div>', unsafe_allow_html=True)
