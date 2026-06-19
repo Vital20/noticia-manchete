@@ -99,11 +99,11 @@ def _resumo_gemini(manchetes):
 
 def gerar_resumo(manchetes):
     if not manchetes:
-        return "Nenhuma manchete disponivel para gerar resumo."
+        return "Nenhuma manchete disponivel para gerar resumo.", False
 
     resultado = _resumo_gemini(manchetes)
     if resultado:
-        return resultado
+        return resultado, True
 
-    logger.info("Usando resumo local (fallback)")
-    return _resumo_local(manchetes)
+    logger.info("Cota Gemini excedida ou erro na API — usando fallback local")
+    return _resumo_local(manchetes), False

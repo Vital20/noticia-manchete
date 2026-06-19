@@ -205,9 +205,10 @@ for key in ["analise_feita", "df_resultado", "manchetes_raw", "tema_atual"]:
     if key not in st.session_state:
         st.session_state[key] = False if key == "analise_feita" else (pd.DataFrame() if "df" in key else [] if "raw" in key else "")
 
-for key in ["comp_resultado", "resumo_texto", "resumo_comp_texto"]:
+for key in ["comp_resultado", "resumo_texto", "resumo_comp_texto",
+            "status_gemini", "status_gemini_comp"]:
     if key not in st.session_state:
-        st.session_state[key] = False if "resultado" in key else ""
+        st.session_state[key] = False if "resultado" in key else True if "status" in key else ""
 
 if "comp_dados" not in st.session_state:
     st.session_state.comp_dados = {}
@@ -390,9 +391,13 @@ with tab1:
         st.markdown(f'<div class="section-title"><span>🤖</span> Resumo das Manchetes</div>', unsafe_allow_html=True)
         if st.button("✨ Gerar Resumo", type="primary", key="resumo_tab1"):
             with st.spinner("Analisando manchetes..."):
-                st.session_state.resumo_texto = gerar_resumo(manchetes)
+                resumo, ok = gerar_resumo(manchetes)
+                st.session_state.resumo_texto = resumo
+                st.session_state.status_gemini = ok
             st.rerun()
         if st.session_state.get("resumo_texto"):
+            if not st.session_state.get("status_gemini", True):
+                st.info("⚠️ Cota da API Gemini excedida — resumo gerado localmente.")
             st.markdown(f'<div class="info-box">{st.session_state.resumo_texto}</div>', unsafe_allow_html=True)
     else:
         st.markdown(
@@ -593,7 +598,7 @@ with tab2:
             if stub_a or stub_b:
                 if st.button("✨ Gerar Resumo Comparativo", type="primary", key="resumo_tab2"):
                     with st.spinner("Analisando..."):
-                        resumo_texto = gerar_resumo(stub_a + stub_b)
+                        resumo_texto, ok = gerar_resumo(stub_a + stub_b)
                         ta, pa, na, neua = _metricas(df_a)
                         tb, pb, nb, neub = _metricas(df_b)
                         extra = (
@@ -602,8 +607,11 @@ with tab2:
                             f"({pb} positivas, {nb} negativas)."
                         )
                         st.session_state.resumo_comp_texto = resumo_texto + extra
+                        st.session_state.status_gemini_comp = ok
                     st.rerun()
                 if st.session_state.get("resumo_comp_texto"):
+                    if not st.session_state.get("status_gemini_comp", True):
+                        st.info("⚠️ Cota da API Gemini excedida — resumo gerado localmente.")
                     st.markdown(f'<div class="info-box">{st.session_state.resumo_comp_texto}</div>', unsafe_allow_html=True)
 
 # ============================================================
